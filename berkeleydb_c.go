@@ -1,8 +1,6 @@
 package goberkeleydb
 
 import (
-	_ "os"
-	_ "reflect"
 	"unsafe"
 )
 
@@ -85,28 +83,44 @@ const (
 	Unknown  = DbType(C.DB_UNKNOWN)
 )
 
+type DbFlag C.u_int32_t
+
+const (
+	DB_AUTO_COMMIT      = DbFlag(C.DB_AUTO_COMMIT)
+	DB_CREATE           = DbFlag(C.DB_CREATE)
+	DB_EXCL             = DbFlag(C.DB_EXCL)
+	DB_MULTIVERSION     = DbFlag(C.DB_MULTIVERSION)
+	DB_NOMMAP           = DbFlag(C.DB_NOMMAP)
+	DB_RDONLY           = DbFlag(C.DB_RDONLY)
+	DB_READ_UNCOMMITTED = DbFlag(C.DB_READ_UNCOMMITTED)
+	DB_THREAD           = DbFlag(C.DB_THREAD)
+	DB_TRUNCATE         = DbFlag(C.DB_TRUNCATE)
+)
+
 type Environment struct {
 	ptr *C.DB_ENV
 }
+
+var NoEnv = Environment{ptr: nil}
+var NoTxn = Transaction{ptr: nil}
 
 func Err(C.int) error {
 	return nil
 }
 
-func BytesDbt(val []byte) *DBT {
-	return &DBT{
-		ptr: &C.DBT{
-			data: unsafe.Pointer(&val[0]),
-			size: C.u_int32_t(len(val)),
-		},
+func bytesDBT(val []byte) *C.DBT {
+	return &C.DBT{
+		data:  unsafe.Pointer(&val[0]),
+		size:  C.u_int32_t(len(val)),
+		flags: C.DB_DBT_READONLY,
 	}
 }
 
-func DbtBytes(val *DBT) []byte {
-	return C.GoBytes(val.ptr.data, C.int(val.ptr.size))
+func cloneToBytes(val *C.DBT) []byte {
+	return C.GoBytes(val.data, C.int(val.size))
 }
 
-func OpenBDB(env Environment, trn Transaction, file string, database string, dbtype DbType, flags uint32, mode int) (*BerkeleyDB, error) {
+func OpenBDB(env Environment, trn Transaction, file string, database string, dbtype DbType, flags DbFlag, mode int) (*BerkeleyDB, error) {
 	cFile := C.CString(file)
 	defer C.free(unsafe.Pointer(cFile))
 	cDatabase := C.CString(database)
@@ -114,19 +128,19 @@ func OpenBDB(env Environment, trn Transaction, file string, database string, dbt
 
 	var db *BerkeleyDB = new(BerkeleyDB)
 
-	err := Err(C.db_create(&db.ptr, env.ptr, 0))
+	err := Err(C.db_create(&db.ptr, nil, 0))
 	if err != nil {
 		return nil, err
 	}
 
-	err = Err(C.db_open(db.ptr, trn.ptr, cFile, cDatabase, C.DBTYPE(dbtype), C.u_int32_t(flags), C.int(mode)))
+	err = Err(C.db_open(db.ptr, trn.ptr, cFile, nil, C.DBTYPE(dbtype), C.u_int32_t(flags), C.int(mode)))
 	if err != nil {
 		db.Close(0)
 		return nil, err
 	}
 	return db, nil
 }
-func (db BerkeleyDB) Close(flags uint32) (err error) {
+func (db BerkeleyDB) Close(flags DbFlag) (err error) {
 	if db.ptr != nil {
 		err = Err(C.db_close(db.ptr, C.u_int32_t(flags)))
 		db.ptr = nil
@@ -139,46 +153,79 @@ func (db BerkeleyDB) GetType() (DbType, error) {
 	dbtype := DbType(cdbtype)
 	return dbtype, err
 }
-func (db BerkeleyDB) Put(txn Transaction, key, val DBT, flags uint32) error {
-	cFlags := C.u_int32_t(flags)
-	return Err(C.db_put(db.ptr, txn.ptr, key.ptr, val.ptr, cFlags))
+func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
+	return Err(C.db_put(db.ptr, txn.ptr, bytesDBT(key), bytesDBT(val), C.u_int32_t(flags)))
 }
-func (db BerkeleyDB) Get(txn Transaction, key DBT, flag uint32) (DBT, error) {
-	cFlags := C.u_int32_t(flag)
-    var cVal DBT
-	err := Err(C.db_get(db.ptr, txn.ptr, key.ptr, cVal.ptr, cFlags))
-	return cVal, err
+func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, error) {
+	var data C.DBT
+	data.flags |= C.DB_DBT_REALLOC
+	defer C.free(data.data)
+
+	err := Err(C.db_get(db.ptr, txn.ptr, bytesDBT(key), &data, C.u_int32_t(flags)))
+	if err != nil {
+		return nil, err
+	}
+
+	return cloneToBytes(&data), nil
 }
-func (db BerkeleyDB) Del(txn Transaction, key []byte, flag uint32) error {
+func (db BerkeleyDB) Del(txn Transaction, key []byte, flags DbFlag) error {
 	return nil
 }
 
-func (db BerkeleyDB) NewCursor(txn Transaction, flag uint32) (*Cursor, error) {
-	return nil, nil
+func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
+	ret := new(Cursor)
+	err := Err(C.db_cursor(db.ptr, txn.ptr, &ret.ptr, C.u_int32_t(flags)))
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
 func (cursor *Cursor) Close() error {
-	return nil
+	err := Err(C.db_cursor_close(cursor.ptr))
+	if err == nil {
+		cursor.ptr = nil
+	}
+	return err
 }
-func (cursor *Cursor) Get(key []byte, val []byte, flag uint32) error {
-	return nil
+func (cursor *Cursor) First() ([]byte, []byte, error) {
+	return cursor.get(C.DB_FIRST)
 }
-func (cursor *Cursor) Del(flag uint32) error {
+func (cursor *Cursor) Next() ([]byte, []byte, error) {
+	return cursor.get(C.DB_NEXT)
+}
+func (cursor *Cursor) Last() ([]byte, []byte, error) {
+	return cursor.get(C.DB_LAST)
+}
+func (cursor *Cursor) get(flags DbFlag) ([]byte, []byte, error) {
+	var key, val C.DBT
+	key.flags |= C.DB_DBT_REALLOC
+	defer C.free(key.data)
+	val.flags |= C.DB_DBT_REALLOC
+	defer C.free(val.data)
+
+	err := Err(C.db_cursor_get(cursor.ptr, &key, &val, C.u_int32_t(flags)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return cloneToBytes(&key), cloneToBytes(&val), nil
+}
+func (cursor *Cursor) Del(flags DbFlag) error {
 	return nil
 }
 
-func NewEnvironment(home string, flag uint32, mode int) (*Environment, error) {
+func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
 	return nil, nil
 }
-func (env Environment) Close(flag uint32) error {
+func (env Environment) Close(flags DbFlag) error {
 	return nil
 }
 
-func (env Environment) BeginTransaction(flag uint32) (*Transaction, error) {
+func (env Environment) BeginTransaction(flags DbFlag) (*Transaction, error) {
 	return nil, nil
 }
 func (trx Transaction) Abort() error {
 	return nil
 }
-func (txn Transaction) Commit(flag uint32) error {
+func (txn Transaction) Commit(flags DbFlag) error {
 	return nil
 }
