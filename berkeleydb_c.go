@@ -166,7 +166,7 @@ func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, err
 	return cloneToBytes(&data), nil
 }
 func (db BerkeleyDB) Del(txn Transaction, key []byte, flags DbFlag) error {
-	return nil
+	return Err(C.db_del(db.ptr, txn.ptr, bytesDBT(key), C.u_int32_t(flags)))
 }
 
 func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
