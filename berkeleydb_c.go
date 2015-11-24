@@ -35,9 +35,6 @@ import (
  static inline int db_cursor_get(DBC *cur, DBT *key, DBT *data, u_int32_t flags) {
  	return cur->get(cur, key, data, flags);
  }
- static inline int db_cursor_del(DBC *cur, u_int32_t flags) {
- 	return cur->del(cur, flags);
- }
 
  static inline int db_env_open(DB_ENV *env, const char *home, u_int32_t flags, int mode) {
  	return env->open(env, home, flags, mode);
@@ -180,23 +177,23 @@ func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
 	}
 	return ret, nil
 }
-func (cursor *Cursor) Close() error {
+func (cursor Cursor) Close() error {
 	err := Err(C.db_cursor_close(cursor.ptr))
 	if err == nil {
 		cursor.ptr = nil
 	}
 	return err
 }
-func (cursor *Cursor) First() ([]byte, []byte, error) {
+func (cursor Cursor) First() ([]byte, []byte, error) {
 	return cursor.get(C.DB_FIRST)
 }
-func (cursor *Cursor) Next() ([]byte, []byte, error) {
+func (cursor Cursor) Next() ([]byte, []byte, error) {
 	return cursor.get(C.DB_NEXT)
 }
-func (cursor *Cursor) Last() ([]byte, []byte, error) {
+func (cursor Cursor) Last() ([]byte, []byte, error) {
 	return cursor.get(C.DB_LAST)
 }
-func (cursor *Cursor) get(flags DbFlag) ([]byte, []byte, error) {
+func (cursor Cursor) get(flags DbFlag) ([]byte, []byte, error) {
 	var key, val C.DBT
 	key.flags |= C.DB_DBT_REALLOC
 	defer C.free(key.data)
@@ -209,10 +206,6 @@ func (cursor *Cursor) get(flags DbFlag) ([]byte, []byte, error) {
 	}
 	return cloneToBytes(&key), cloneToBytes(&val), nil
 }
-func (cursor *Cursor) Del(flags DbFlag) error {
-	return nil
-}
-
 func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
 	return nil, nil
 }
