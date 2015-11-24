@@ -85,7 +85,7 @@ const (
 	Unknown  = DbType(C.DB_UNKNOWN)
 )
 
-type DbFlag C.u_int32_t
+type DbFlag uint32
 
 const (
 	DB_AUTO_COMMIT      = DbFlag(C.DB_AUTO_COMMIT)
@@ -115,20 +115,26 @@ func cloneToBytes(val *C.DBT) []byte {
 	return C.GoBytes(val.data, C.int(val.size))
 }
 
-func OpenBDB(env Environment, trn Transaction, file string, database string, dbtype DbType, flags DbFlag, mode int) (*BerkeleyDB, error) {
+func OpenBDB(env Environment, txn Transaction, file string, database *string, dbtype DbType, flags DbFlag, mode int) (*BerkeleyDB, error) {
 	cFile := C.CString(file)
 	defer C.free(unsafe.Pointer(cFile))
-	cDatabase := C.CString(database)
-	defer C.free(unsafe.Pointer(cDatabase))
+
+	var cDatabase *C.char
+	if database != nil {
+		cDatabase = C.CString(*database)
+		defer C.free(unsafe.Pointer(cDatabase))
+	}
 
 	var db *BerkeleyDB = new(BerkeleyDB)
 
-	err := Err(C.db_create(&db.ptr, nil, 0))
+	//The flags parameter is currently unused, and must be set to 0.
+	// https://docs.oracle.com/cd/E17276_01/html/api_reference/C/dbcreate.html
+	err := Err(C.db_create(&db.ptr, env.ptr, 0))
 	if err != nil {
 		return nil, err
 	}
 
-	err = Err(C.db_open(db.ptr, trn.ptr, cFile, nil, C.DBTYPE(dbtype), C.u_int32_t(flags), C.int(mode)))
+	err = Err(C.db_open(db.ptr, txn.ptr, cFile, cDatabase, C.DBTYPE(dbtype), C.u_int32_t(flags), C.int(mode)))
 	if err != nil {
 		db.Close(0)
 		return nil, err
@@ -192,10 +198,9 @@ func (cursor Cursor) Last() ([]byte, []byte, error) {
 	return cursor.CursorGetRaw(C.DB_LAST)
 }
 func (cursor Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
-	var key, val C.DBT
-	key.flags |= C.DB_DBT_REALLOC
+	key := C.DBT{flags: C.DB_DBT_REALLOC}
 	defer C.free(key.data)
-	val.flags |= C.DB_DBT_REALLOC
+	val := C.DBT{flags: C.DB_DBT_REALLOC}
 	defer C.free(val.data)
 
 	err := Err(C.db_cursor_get(cursor.ptr, &key, &val, C.u_int32_t(flags)))
