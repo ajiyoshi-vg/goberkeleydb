@@ -7,6 +7,7 @@ import (
 /*
  #cgo LDFLAGS: -ldb
  #include <stdlib.h>
+ #include <errno.h>
  #include <db.h>
  static inline int db_open(DB *db, DB_TXN *txn, const char *file, const char *database, DBTYPE type, u_int32_t flags, int mode) {
  	return db->open(db, txn, file, database, type, flags, mode);
@@ -99,15 +100,46 @@ const (
 	DB_TRUNCATE         = DbFlag(C.DB_TRUNCATE)
 )
 
-func Err(C.int) error {
-	return nil
+type Errno int
+
+const (
+	ErrAgain           = Errno(C.EAGAIN)
+	ErrInvalid         = Errno(C.EINVAL)
+	ErrNoEntry         = Errno(C.ENOENT)
+	ErrExists          = Errno(C.EEXIST)
+	ErrAccess          = Errno(C.EACCES)
+	ErrNoSpace         = Errno(C.ENOSPC)
+	ErrPermission      = Errno(C.EPERM)
+	ErrRunRecovery     = Errno(C.DB_RUNRECOVERY)
+	ErrVersionMismatch = Errno(C.DB_VERSION_MISMATCH)
+	ErrOldVersion      = Errno(C.DB_OLD_VERSION)
+	ErrLockDeadlock    = Errno(C.DB_LOCK_DEADLOCK)
+	ErrLockNotGranted  = Errno(C.DB_LOCK_NOTGRANTED)
+	ErrBufferTooSmall  = Errno(C.DB_BUFFER_SMALL)
+	ErrSecondaryBad    = Errno(C.DB_SECONDARY_BAD)
+	ErrForeignConflict = Errno(C.DB_FOREIGN_CONFLICT)
+	ErrKeyExists       = Errno(C.DB_KEYEXIST)
+	ErrKeyEmpty        = Errno(C.DB_KEYEMPTY)
+	ErrNotFound        = Errno(C.DB_NOTFOUND)
+)
+
+func (err Errno) Error() string {
+	return C.GoString(C.db_strerror(C.int(err)))
+}
+
+func Err(rc C.int) error {
+	if rc != 0 {
+		return Errno(rc)
+	} else {
+		return nil
+	}
 }
 
 func bytesDBT(val []byte) *C.DBT {
 	return &C.DBT{
 		data:  unsafe.Pointer(&val[0]),
 		size:  C.u_int32_t(len(val)),
-		flags: C.DB_DBT_READONLY,
+		flags: C.DB_DBT_USERMEM,
 	}
 }
 
