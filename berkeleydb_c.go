@@ -61,15 +61,20 @@ type BerkeleyDB struct {
 type Transaction struct {
 	ptr *C.DB_TXN
 }
-type Cursor struct {
-	db  BerkeleyDB
-	ptr *C.DBC
+type Environment struct {
+	ptr *C.DB_ENV
 }
-type DbType int
-
 type DBT struct {
 	ptr *C.DBT
 }
+type Cursor struct {
+	ptr *C.DBC
+}
+
+var NoEnv = Environment{ptr: nil}
+var NoTxn = Transaction{ptr: nil}
+
+type DbType int
 
 // Available database types.
 const (
@@ -93,13 +98,6 @@ const (
 	DB_THREAD           = DbFlag(C.DB_THREAD)
 	DB_TRUNCATE         = DbFlag(C.DB_TRUNCATE)
 )
-
-type Environment struct {
-	ptr *C.DB_ENV
-}
-
-var NoEnv = Environment{ptr: nil}
-var NoTxn = Transaction{ptr: nil}
 
 func Err(C.int) error {
 	return nil
@@ -185,15 +183,15 @@ func (cursor Cursor) Close() error {
 	return err
 }
 func (cursor Cursor) First() ([]byte, []byte, error) {
-	return cursor.get(C.DB_FIRST)
+	return cursor.CursorGetRaw(C.DB_FIRST)
 }
 func (cursor Cursor) Next() ([]byte, []byte, error) {
-	return cursor.get(C.DB_NEXT)
+	return cursor.CursorGetRaw(C.DB_NEXT)
 }
 func (cursor Cursor) Last() ([]byte, []byte, error) {
-	return cursor.get(C.DB_LAST)
+	return cursor.CursorGetRaw(C.DB_LAST)
 }
-func (cursor Cursor) get(flags DbFlag) ([]byte, []byte, error) {
+func (cursor Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
 	var key, val C.DBT
 	key.flags |= C.DB_DBT_REALLOC
 	defer C.free(key.data)
