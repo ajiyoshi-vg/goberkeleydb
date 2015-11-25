@@ -6,7 +6,7 @@ BerkeleyDB is a good old key value DB library.
 
 ## install
 
-BerkeleyDB library and header the files are required.
+BerkeleyDB library and the header files are required.
 Please install them before rum `go get`.
 For example:
 
