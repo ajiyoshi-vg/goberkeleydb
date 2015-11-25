@@ -15,9 +15,6 @@ import (
  static inline int db_close(DB *db, u_int32_t flags) {
  	return db->close(db, flags);
  }
- static inline int db_get_type(DB *db, DBTYPE *type) {
- 	return db->get_type(db, type);
- }
  static inline int db_put(DB *db, DB_TXN *txn, DBT *key, DBT *data, u_int32_t flags) {
  	return db->put(db, txn, key, data, flags);
  }
@@ -89,15 +86,15 @@ const (
 type DbFlag uint32
 
 const (
-	DB_AUTO_COMMIT      = DbFlag(C.DB_AUTO_COMMIT)
-	DB_CREATE           = DbFlag(C.DB_CREATE)
-	DB_EXCL             = DbFlag(C.DB_EXCL)
-	DB_MULTIVERSION     = DbFlag(C.DB_MULTIVERSION)
-	DB_NOMMAP           = DbFlag(C.DB_NOMMAP)
-	DB_RDONLY           = DbFlag(C.DB_RDONLY)
-	DB_READ_UNCOMMITTED = DbFlag(C.DB_READ_UNCOMMITTED)
-	DB_THREAD           = DbFlag(C.DB_THREAD)
-	DB_TRUNCATE         = DbFlag(C.DB_TRUNCATE)
+	DbAutoCommit     = DbFlag(C.DB_AUTO_COMMIT)
+	DbCreate         = DbFlag(C.DB_CREATE)
+	DbExcl           = DbFlag(C.DB_EXCL)
+	DbMultiVersion   = DbFlag(C.DB_MULTIVERSION)
+	DbNoMmap         = DbFlag(C.DB_NOMMAP)
+	DbReadOnly       = DbFlag(C.DB_RDONLY)
+	DbReadUncommited = DbFlag(C.DB_READ_UNCOMMITTED)
+	DbThread         = DbFlag(C.DB_THREAD)
+	DbTruncate       = DbFlag(C.DB_TRUNCATE)
 )
 
 type Errno int
@@ -180,18 +177,11 @@ func (db BerkeleyDB) Close(flags DbFlag) (err error) {
 	}
 	return err
 }
-func (db BerkeleyDB) GetType() (DbType, error) {
-	var cdbtype C.DBTYPE
-	err := Err(C.db_get_type(db.ptr, &cdbtype))
-	dbtype := DbType(cdbtype)
-	return dbtype, err
-}
 func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
 	return Err(C.db_put(db.ptr, txn.ptr, bytesDBT(key), bytesDBT(val), C.u_int32_t(flags)))
 }
 func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, error) {
-	var data C.DBT
-	data.flags |= C.DB_DBT_REALLOC
+	data := C.DBT{flags: C.DB_DBT_REALLOC}
 	defer C.free(data.data)
 
 	err := Err(C.db_get(db.ptr, txn.ptr, bytesDBT(key), &data, C.u_int32_t(flags)))

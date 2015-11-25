@@ -7,7 +7,7 @@ import (
 )
 
 func TestPutGet(t *testing.T) {
-	db, err := OpenBDB(NoEnv, NoTxn, "hoge.db", nil, BTree, DB_CREATE, 0)
+	db, err := OpenBDB(NoEnv, NoTxn, "hoge.db", nil, BTree, DbCreate, 0)
 	if err != nil {
 		t.Fatalf("open failed %v\n", err)
 	}
@@ -31,7 +31,7 @@ func TestPutGet(t *testing.T) {
 }
 
 func TestCursor(t *testing.T) {
-	db, err := OpenBDB(NoEnv, NoTxn, "hoge.db", nil, BTree, DB_RDONLY, 0)
+	db, err := OpenBDB(NoEnv, NoTxn, "hoge.db", nil, BTree, DbReadOnly, 0)
 	if err != nil {
 		t.Fatalf("open failed %v\n", err)
 	}
