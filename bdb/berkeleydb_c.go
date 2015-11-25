@@ -110,6 +110,8 @@ const (
 	ErrNotFound        = Errno(C.DB_NOTFOUND)
 )
 
+var ok error
+
 func (err Errno) Error() string {
 	return C.GoString(C.db_strerror(C.int(err)))
 }
@@ -118,7 +120,7 @@ func Err(rc C.int) error {
 	if rc != 0 {
 		return Errno(rc)
 	} else {
-		return nil
+		return ok
 	}
 }
 
@@ -158,11 +160,11 @@ func OpenBDB(env Environment, txn Transaction, file string, database *string, db
 		db.Close(0)
 		return nil, err
 	}
-	return db, nil
+	return db, ok
 }
 func (db BerkeleyDB) Close(flags DbFlag) error {
 	if db.ptr == nil {
-		return nil
+		return ok
 	}
 
 	err := Err(C.db_close(db.ptr, C.u_int32_t(flags)))
@@ -171,7 +173,7 @@ func (db BerkeleyDB) Close(flags DbFlag) error {
 	}
 
 	db.ptr = nil
-	return nil
+	return ok
 }
 func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
 	return Err(C.db_put(db.ptr, txn.ptr, bytesDBT(key), bytesDBT(val), C.u_int32_t(flags)))
@@ -185,7 +187,7 @@ func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, err
 		return nil, err
 	}
 
-	return cloneToBytes(&data), nil
+	return cloneToBytes(&data), ok
 }
 func (db BerkeleyDB) Del(txn Transaction, key []byte, flags DbFlag) error {
 	return Err(C.db_del(db.ptr, txn.ptr, bytesDBT(key), C.u_int32_t(flags)))
@@ -197,18 +199,18 @@ func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ret, nil
+	return ret, ok
 }
 func (cursor Cursor) Close() error {
 	if cursor.ptr == nil {
-		return nil
+		return ok
 	}
 	err := Err(C.db_cursor_close(cursor.ptr))
 	if err != nil {
 		return err
 	}
 	cursor.ptr = nil
-	return nil
+	return ok
 }
 func (cursor Cursor) First() ([]byte, []byte, error) {
 	return cursor.CursorGetRaw(C.DB_FIRST)
@@ -229,7 +231,7 @@ func (cursor Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	return cloneToBytes(&key), cloneToBytes(&val), nil
+	return cloneToBytes(&key), cloneToBytes(&val), ok
 }
 func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
 	ret := new(Environment)
@@ -248,11 +250,11 @@ func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
 		return nil, err
 	}
 
-	return ret, nil
+	return ret, ok
 }
 func (env Environment) Close(flags DbFlag) error {
 	if env.ptr == nil {
-		return nil
+		return ok
 	}
 
 	err := Err(C.db_env_close(env.ptr, C.u_int32_t(flags)))
@@ -261,5 +263,5 @@ func (env Environment) Close(flags DbFlag) error {
 	}
 
 	env.ptr = nil
-	return nil
+	return ok
 }
