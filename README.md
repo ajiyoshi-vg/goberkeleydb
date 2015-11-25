@@ -7,7 +7,7 @@ BerkeleyDB is a good old key value DB library.
 ## install
 
 BerkeleyDB library and the header files are required.
-Please install them before rum `go get`.
+Please install them before run `go get`.
 For example:
 
 ```sh
