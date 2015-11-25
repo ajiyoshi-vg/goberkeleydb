@@ -1,4 +1,4 @@
-package goberkeleydb
+package bdb
 
 import (
 	"bytes"

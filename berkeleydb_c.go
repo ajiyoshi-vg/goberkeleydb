@@ -1,4 +1,4 @@
-package goberkeleydb
+package bdb
 
 import (
 	"unsafe"
@@ -41,15 +41,6 @@ import (
  	return env->close(env, flags);
  }
 
- static inline int db_env_txn_begin(DB_ENV *env, DB_TXN *parent, DB_TXN **txn, u_int32_t flags) {
- 	return env->txn_begin(env, parent, txn, flags);
- }
- static inline int db_txn_abort(DB_TXN *txn) {
- 	return txn->abort(txn);
- }
- static inline int db_txn_commit(DB_TXN *txn, u_int32_t flags) {
- 	return txn->commit(txn, flags);
- }
 */
 import "C"
 
@@ -232,18 +223,28 @@ func (cursor Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
 	return cloneToBytes(&key), cloneToBytes(&val), nil
 }
 func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
-	return nil, nil
+	ret := new(Environment)
+
+	err := Err(C.db_env_create(&ret.ptr, 0))
+	if err != nil {
+		return nil, err
+	}
+
+	cHome := C.CString(home)
+	defer C.free(unsafe.Pointer(cHome))
+
+	err = Err(C.db_env_open(ret.ptr, cHome, C.u_int32_t(flags), C.int(mode)))
+	if err != nil {
+		ret.Close(0)
+		return nil, err
+	}
+
+	return ret, nil
 }
 func (env Environment) Close(flags DbFlag) error {
-	return nil
-}
-
-func (env Environment) BeginTransaction(flags DbFlag) (*Transaction, error) {
-	return nil, nil
-}
-func (trx Transaction) Abort() error {
-	return nil
-}
-func (txn Transaction) Commit(flags DbFlag) error {
-	return nil
+	err := Err(C.db_env_close(env.ptr, C.u_int32_t(flags)))
+	if err == nil {
+		env.ptr = nil
+	}
+	return err
 }
