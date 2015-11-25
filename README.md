@@ -12,7 +12,7 @@ For example:
 
 ```sh
 $ apt-get install libdb-devel
-``
+```
 
 then, `go get`
 
