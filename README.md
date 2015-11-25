@@ -17,7 +17,7 @@ $ apt-get install libdb-devel
 then, `go get`
 
 ```sh
-$ go get -u ajiyoshi-vg/goberkeleydb/bdb
+$ go get -u github.com/ajiyoshi-vg/goberkeleydb/bdb
 ```
 
 ## misc
