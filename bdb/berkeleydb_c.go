@@ -65,7 +65,6 @@ var NoTxn = Transaction{ptr: nil}
 
 type DbType int
 
-// Available database types.
 const (
 	BTree    = DbType(C.DB_BTREE)
 	Hash     = DbType(C.DB_HASH)
@@ -161,12 +160,18 @@ func OpenBDB(env Environment, txn Transaction, file string, database *string, db
 	}
 	return db, nil
 }
-func (db BerkeleyDB) Close(flags DbFlag) (err error) {
-	if db.ptr != nil {
-		err = Err(C.db_close(db.ptr, C.u_int32_t(flags)))
-		db.ptr = nil
+func (db BerkeleyDB) Close(flags DbFlag) error {
+	if db.ptr == nil {
+		return nil
 	}
-	return err
+
+	err := Err(C.db_close(db.ptr, C.u_int32_t(flags)))
+	if err != nil {
+		return err
+	}
+
+	db.ptr = nil
+	return nil
 }
 func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
 	return Err(C.db_put(db.ptr, txn.ptr, bytesDBT(key), bytesDBT(val), C.u_int32_t(flags)))
@@ -195,11 +200,15 @@ func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
 	return ret, nil
 }
 func (cursor Cursor) Close() error {
-	err := Err(C.db_cursor_close(cursor.ptr))
-	if err == nil {
-		cursor.ptr = nil
+	if cursor.ptr == nil {
+		return nil
 	}
-	return err
+	err := Err(C.db_cursor_close(cursor.ptr))
+	if err != nil {
+		return err
+	}
+	cursor.ptr = nil
+	return nil
 }
 func (cursor Cursor) First() ([]byte, []byte, error) {
 	return cursor.CursorGetRaw(C.DB_FIRST)
@@ -242,9 +251,15 @@ func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
 	return ret, nil
 }
 func (env Environment) Close(flags DbFlag) error {
-	err := Err(C.db_env_close(env.ptr, C.u_int32_t(flags)))
-	if err == nil {
-		env.ptr = nil
+	if env.ptr == nil {
+		return nil
 	}
-	return err
+
+	err := Err(C.db_env_close(env.ptr, C.u_int32_t(flags)))
+	if err != nil {
+		return err
+	}
+
+	env.ptr = nil
+	return nil
 }
