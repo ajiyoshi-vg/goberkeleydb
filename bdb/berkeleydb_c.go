@@ -5,7 +5,7 @@ import (
 )
 
 /*
- #cgo LDFLAGS: -ldb -static -ldb -Wl,-Bdynamic
+ #cgo LDFLAGS: /usr/lib/x86_64-linux-gnu/libdb.a
  #include <stdlib.h>
  #include <errno.h>
  #include <db.h>
