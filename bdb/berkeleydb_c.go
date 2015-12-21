@@ -5,7 +5,7 @@ import (
 )
 
 /*
- #cgo LDFLAGS: -ldb
+ #cgo LDFLAGS: -ldb -static -ldb -Wl,-Bdynamic
  #include <stdlib.h>
  #include <errno.h>
  #include <db.h>
