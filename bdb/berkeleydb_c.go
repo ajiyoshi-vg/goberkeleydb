@@ -28,10 +28,10 @@ import (
  	return db->cursor(db, txn, cursor, flags);
  }
  static inline int db_cursor_close(DBC *cur) {
- 	return cur->close(cur);
+ 	return cur->c_close(cur);
  }
  static inline int db_cursor_get(DBC *cur, DBT *key, DBT *data, u_int32_t flags) {
- 	return cur->get(cur, key, data, flags);
+ 	return cur->c_get(cur, key, data, flags);
  }
 
  static inline int db_env_open(DB_ENV *env, const char *home, u_int32_t flags, int mode) {
@@ -76,15 +76,13 @@ const (
 type DbFlag uint32
 
 const (
-	DbAutoCommit     = DbFlag(C.DB_AUTO_COMMIT)
-	DbCreate         = DbFlag(C.DB_CREATE)
-	DbExcl           = DbFlag(C.DB_EXCL)
-	DbMultiVersion   = DbFlag(C.DB_MULTIVERSION)
-	DbNoMmap         = DbFlag(C.DB_NOMMAP)
-	DbReadOnly       = DbFlag(C.DB_RDONLY)
-	DbReadUncommited = DbFlag(C.DB_READ_UNCOMMITTED)
-	DbThread         = DbFlag(C.DB_THREAD)
-	DbTruncate       = DbFlag(C.DB_TRUNCATE)
+	DbAutoCommit = DbFlag(C.DB_AUTO_COMMIT)
+	DbCreate     = DbFlag(C.DB_CREATE)
+	DbExcl       = DbFlag(C.DB_EXCL)
+	DbNoMmap     = DbFlag(C.DB_NOMMAP)
+	DbReadOnly   = DbFlag(C.DB_RDONLY)
+	DbThread     = DbFlag(C.DB_THREAD)
+	DbTruncate   = DbFlag(C.DB_TRUNCATE)
 )
 
 type Errno int
@@ -104,7 +102,6 @@ const (
 	ErrLockNotGranted  = Errno(C.DB_LOCK_NOTGRANTED)
 	ErrBufferTooSmall  = Errno(C.DB_BUFFER_SMALL)
 	ErrSecondaryBad    = Errno(C.DB_SECONDARY_BAD)
-	ErrForeignConflict = Errno(C.DB_FOREIGN_CONFLICT)
 	ErrKeyExists       = Errno(C.DB_KEYEXIST)
 	ErrKeyEmpty        = Errno(C.DB_KEYEMPTY)
 	ErrNotFound        = Errno(C.DB_NOTFOUND)
