@@ -124,12 +124,18 @@ func Err(rc C.int) error {
 	}
 }
 
-func bytesDBT(val []byte) *C.DBT {
+func AllocDBT(val []byte) *C.DBT {
 	return &C.DBT{
-		data:  unsafe.Pointer(&val[0]),
+		// someday we will be able to use C.CBytes() for this purpose
+		// https://github.com/golang/go/issues/14838
+		data:  unsafe.Pointer(C.CString(string(val))),
 		size:  C.u_int32_t(len(val)),
 		flags: C.DB_DBT_USERMEM,
 	}
+}
+
+func (dbt *C.DBT) Free() {
+	C.free(dbt.data)
 }
 
 func cloneToBytes(val *C.DBT) []byte {
@@ -176,21 +182,31 @@ func (db BerkeleyDB) Close(flags DbFlag) error {
 	return ok
 }
 func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
-	return Err(C.db_put(db.ptr, txn.ptr, bytesDBT(key), bytesDBT(val), C.u_int32_t(flags)))
+	cKey := AllocDBT(key)
+	defer cKey.Free()
+	cVal := AllocDBT(val)
+	defer cVal.Free()
+
+	return Err(C.db_put(db.ptr, txn.ptr, cKey, cVal, C.u_int32_t(flags)))
 }
 func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, error) {
-	data := C.DBT{flags: C.DB_DBT_REALLOC}
-	defer C.free(data.data)
+	data := &C.DBT{flags: C.DB_DBT_REALLOC}
+	defer data.Free()
 
-	err := Err(C.db_get(db.ptr, txn.ptr, bytesDBT(key), &data, C.u_int32_t(flags)))
+	cKey := AllocDBT(key)
+	defer cKey.Free()
+
+	err := Err(C.db_get(db.ptr, txn.ptr, cKey, data, C.u_int32_t(flags)))
 	if err != nil {
 		return nil, err
 	}
 
-	return cloneToBytes(&data), ok
+	return cloneToBytes(data), ok
 }
 func (db BerkeleyDB) Del(txn Transaction, key []byte, flags DbFlag) error {
-	return Err(C.db_del(db.ptr, txn.ptr, bytesDBT(key), C.u_int32_t(flags)))
+	cKey := AllocDBT(key)
+	defer cKey.Free()
+	return Err(C.db_del(db.ptr, txn.ptr, cKey, C.u_int32_t(flags)))
 }
 
 func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
