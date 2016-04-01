@@ -1,6 +1,8 @@
 
 # goberkeleydb
 
+[![Build Status](https://travis-ci.org/ajiyoshi-vg/goberkeleydb.svg)](https://travis-ci.org/ajiyoshi-vg/goberkeleydb)
+
 BerkeleyDB is a good old key value DB library.
 `goberkeleydb` is a BerkeleyDB binding for go. 
 
