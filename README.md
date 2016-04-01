@@ -11,7 +11,14 @@ Please install them before run `go get`.
 For example:
 
 ```sh
-$ apt-get install libdb-devel
+# Debian
+$ apt-get install libdb-dev
+
+# RHEL
+$ dnf install libdb-dev
+
+# Mac OS X via homebrew
+$ brew install berkeley-db
 ```
 
 then, `go get`
