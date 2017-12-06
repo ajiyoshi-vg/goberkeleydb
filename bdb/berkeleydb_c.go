@@ -239,9 +239,9 @@ func (cursor Cursor) Last() ([]byte, []byte, error) {
 }
 func (cursor Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
 	key := C.DBT{flags: C.DB_DBT_REALLOC}
-	defer C.free(key.data)
+	defer key.Free()
 	val := C.DBT{flags: C.DB_DBT_REALLOC}
-	defer C.free(val.data)
+	defer val.Free()
 
 	err := Err(C.db_cursor_get(cursor.ptr, &key, &val, C.u_int32_t(flags)))
 	if err != nil {
