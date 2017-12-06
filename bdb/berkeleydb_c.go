@@ -168,11 +168,7 @@ func OpenBDB(env Environment, txn Transaction, file string, database *string, db
 	}
 	return db, ok
 }
-func (db BerkeleyDB) Close(flags DbFlag) error {
-	if db.ptr == nil {
-		return ok
-	}
-
+func (db *BerkeleyDB) Close(flags DbFlag) error {
 	err := Err(C.db_close(db.ptr, C.u_int32_t(flags)))
 	if err != nil {
 		return err
@@ -181,7 +177,7 @@ func (db BerkeleyDB) Close(flags DbFlag) error {
 	db.ptr = nil
 	return ok
 }
-func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
+func (db *BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
 	cKey := AllocDBT(key)
 	defer cKey.Free()
 	cVal := AllocDBT(val)
@@ -189,7 +185,7 @@ func (db BerkeleyDB) Put(txn Transaction, key, val []byte, flags DbFlag) error {
 
 	return Err(C.db_put(db.ptr, txn.ptr, cKey, cVal, C.u_int32_t(flags)))
 }
-func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, error) {
+func (db *BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, error) {
 	data := &C.DBT{flags: C.DB_DBT_REALLOC}
 	defer data.Free()
 
@@ -203,13 +199,13 @@ func (db BerkeleyDB) Get(txn Transaction, key []byte, flags DbFlag) ([]byte, err
 
 	return cloneToBytes(data), ok
 }
-func (db BerkeleyDB) Del(txn Transaction, key []byte, flags DbFlag) error {
+func (db *BerkeleyDB) Del(txn Transaction, key []byte, flags DbFlag) error {
 	cKey := AllocDBT(key)
 	defer cKey.Free()
 	return Err(C.db_del(db.ptr, txn.ptr, cKey, C.u_int32_t(flags)))
 }
 
-func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
+func (db *BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
 	ret := new(Cursor)
 	err := Err(C.db_cursor(db.ptr, txn.ptr, &ret.ptr, C.u_int32_t(flags)))
 	if err != nil {
@@ -217,7 +213,7 @@ func (db BerkeleyDB) NewCursor(txn Transaction, flags DbFlag) (*Cursor, error) {
 	}
 	return ret, ok
 }
-func (cursor Cursor) Close() error {
+func (cursor *Cursor) Close() error {
 	if cursor.ptr == nil {
 		return ok
 	}
@@ -228,16 +224,16 @@ func (cursor Cursor) Close() error {
 	cursor.ptr = nil
 	return ok
 }
-func (cursor Cursor) First() ([]byte, []byte, error) {
+func (cursor *Cursor) First() ([]byte, []byte, error) {
 	return cursor.CursorGetRaw(C.DB_FIRST)
 }
-func (cursor Cursor) Next() ([]byte, []byte, error) {
+func (cursor *Cursor) Next() ([]byte, []byte, error) {
 	return cursor.CursorGetRaw(C.DB_NEXT)
 }
-func (cursor Cursor) Last() ([]byte, []byte, error) {
+func (cursor *Cursor) Last() ([]byte, []byte, error) {
 	return cursor.CursorGetRaw(C.DB_LAST)
 }
-func (cursor Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
+func (cursor *Cursor) CursorGetRaw(flags DbFlag) ([]byte, []byte, error) {
 	key := C.DBT{flags: C.DB_DBT_REALLOC}
 	defer key.Free()
 	val := C.DBT{flags: C.DB_DBT_REALLOC}
@@ -268,7 +264,7 @@ func NewEnvironment(home string, flags DbFlag, mode int) (*Environment, error) {
 
 	return ret, ok
 }
-func (env Environment) Close(flags DbFlag) error {
+func (env *Environment) Close(flags DbFlag) error {
 	if env.ptr == nil {
 		return ok
 	}
